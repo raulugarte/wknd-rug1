@@ -1,6 +1,7 @@
 import {
   sampleRUM,
   buildBlock,
+  getMetadata,
   loadHeader,
   loadFooter,
   decorateButtons,
@@ -11,10 +12,33 @@ import {
   waitForLCP,
   loadBlocks,
   loadCSS,
+  toClassName,
 } from './lib-franklin.js';
+import {
+  analyticsTrack404,
+  analyticsTrackConversion,
+  analyticsTrackCWV,
+  analyticsTrackError,
+  initAnalyticsTrackingQueue,
+  setupAnalyticsTrackingWithAlloy,
+} from './analytics/lib-analytics.js';
 
 const LCP_BLOCKS = []; // add your LCP blocks to the list
 window.hlx.RUM_GENERATION = 'project-1'; // add your RUM generation information here
+
+// Define the custom audiences mapping for experimentation
+const EXPERIMENTATION_CONFIG = {
+  audiences: {
+    device: {
+      mobile: () => window.innerWidth < 600,
+      desktop: () => window.innerWidth >= 600,
+    },
+    visitor: {
+      new: () => !localStorage.getItem('franklin-visitor-returning'),
+      returning: () => !!localStorage.getItem('franklin-visitor-returning'),
+    },
+  },
+};
 
 /**
  * Determine if we are serving content for the block-library, if so don't load the header or footer
@@ -76,15 +100,32 @@ function buildAutoBlocks(main) {
   }
 }
 
+function patchDemoBlocks(config) {
+  if (window.wknd.demoConfig.blocks && window.wknd.demoConfig.blocks[config.blockName]) {
+    const url = window.wknd.demoConfig.blocks[config.blockName];
+    const splits = new URL(url).pathname.split('/');
+    const [, owner, repo, , branch] = splits;
+    const path = splits.slice(5).join('/');
+
+    const franklinPath = `https://little-forest-58aa.david8603.workers.dev/?url=https://${branch}--${repo}--${owner}.hlx.live/${path}`;
+    return {
+      ...config,
+      jsPath: `${franklinPath}/${config.blockName}.js`,
+      cssPath: `${franklinPath}/${config.blockName}.css`,
+    };
+  }
+  return (config);
+}
+
 async function loadDemoConfig() {
   const demoConfig = {};
   const pathSegments = window.location.pathname.split('/');
   if (window.location.pathname.startsWith('/drafts/') && pathSegments.length > 4) {
     const demoBase = pathSegments.slice(0, 4).join('/');
-    const resp = await fetch(`${demoBase}/theme.json`);
+    const resp = await fetch(`${demoBase}/theme.json?sheet=default&sheet=blocks&`);
     if (resp.status === 200) {
       const json = await resp.json();
-      const tokens = json.data;
+      const tokens = json.data || json.default.data;
       const root = document.querySelector(':root');
       tokens.forEach((e) => {
         root.style.setProperty(`--${e.token}`, `${e.value}`);
@@ -92,6 +133,20 @@ async function loadDemoConfig() {
       });
       demoConfig.tokens = tokens;
       demoConfig.demoBase = demoBase;
+      const blocks = json.blocks ? json.blocks.data : [];
+      demoConfig.blocks = {};
+      blocks.forEach((block) => {
+        demoConfig.blocks[block.name] = block.url;
+      });
+
+      window.hlx.patchBlockConfig.push(patchDemoBlocks);
+    }
+
+    if (!demoConfig.demoBase) {
+      const navCheck = await fetch(`${demoBase}/nav.plain.html`);
+      if (navCheck.status === 200) {
+        demoConfig.demoBase = demoBase;
+      }
     }
   }
   window.wknd = window.wknd || {};
@@ -120,11 +175,20 @@ async function loadEager(doc) {
   document.documentElement.lang = 'en';
   decorateTemplateAndTheme();
 
+  // load experiments
+  const experiment = toClassName(getMetadata('experiment'));
+  const instantExperiment = getMetadata('instant-experiment');
+  if (instantExperiment || experiment) {
+    const { runExperiment } = await import('./experimentation/index.js');
+    await runExperiment(experiment, instantExperiment, EXPERIMENTATION_CONFIG);
+  }
+
   // load demo config
   await loadDemoConfig();
 
   const main = doc.querySelector('main');
   if (main) {
+    await initAnalyticsTrackingQueue();
     decorateMain(main);
     await waitForLCP(LCP_BLOCKS);
   }
@@ -137,7 +201,7 @@ async function loadEager(doc) {
 export function addFavIcon(href) {
   const link = document.createElement('link');
   link.rel = 'icon';
-  link.type = 'image/svg+xml';
+  link.type = 'image/png';
   link.href = href;
   const existingLink = document.querySelector('head link[rel="icon"]');
   if (existingLink) {
@@ -174,10 +238,31 @@ async function loadLazy(doc) {
   } else {
     loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
   }
-  addFavIcon(`${window.hlx.codeBasePath}/styles/favicon.svg`);
+  addFavIcon(`${window.wknd.demoConfig.demoBase || window.hlx.codeBasePath}/favicon.png`);
   sampleRUM('lazy');
   sampleRUM.observe(main.querySelectorAll('div[data-block-name]'));
   sampleRUM.observe(main.querySelectorAll('picture > img'));
+
+  // Load experimentation preview overlay
+  if (window.location.hostname === 'localhost' || window.location.hostname.endsWith('.hlx.page')) {
+    const preview = await import(`${window.hlx.codeBasePath}/tools/preview/preview.js`);
+    await preview.default();
+    if (window.hlx.experiment) {
+      const experimentation = await import(`${window.hlx.codeBasePath}/tools/preview/experimentation.js`);
+      experimentation.default();
+    }
+  }
+
+  // Mark customer as having viewed the page once
+  localStorage.setItem('franklin-visitor-returning', true);
+
+  const context = {
+    getMetadata,
+    toClassName,
+  };
+  // eslint-disable-next-line import/no-relative-packages
+  const { initConversionTracking } = await import('../plugins/rum-conversion/src/index.js');
+  await initConversionTracking.call(context, document);
 }
 
 /**
@@ -193,7 +278,75 @@ function loadDelayed() {
 async function loadPage() {
   await loadEager(document);
   await loadLazy(document);
+  const setupAnalytics = setupAnalyticsTrackingWithAlloy(document);
   loadDelayed();
+  await setupAnalytics;
 }
+
+const cwv = {};
+
+// Forward the RUM CWV cached measurements to edge using WebSDK before the page unloads
+window.addEventListener('beforeunload', () => {
+  if (!Object.keys(cwv).length) return;
+  analyticsTrackCWV(cwv);
+});
+
+// Callback to RUM CWV checkpoint in order to cache the measurements
+sampleRUM.always.on('cwv', async (data) => {
+  if (!data.cwv) return;
+  Object.assign(cwv, data.cwv);
+});
+
+sampleRUM.always.on('404', analyticsTrack404);
+sampleRUM.always.on('error', analyticsTrackError);
+
+// Declare conversionEvent, bufferTimeoutId and tempConversionEvent,
+// outside the convert function to persist them for buffering between
+// subsequent convert calls
+const CONVERSION_EVENT_TIMEOUT_MS = 100;
+let bufferTimeoutId;
+let conversionEvent;
+let tempConversionEvent;
+sampleRUM.always.on('convert', (data) => {
+  const { element } = data;
+  // eslint-disable-next-line no-undef
+  if (!element || !alloy) {
+    return;
+  }
+
+  if (element.tagName === 'FORM') {
+    conversionEvent = {
+      ...data,
+      event: 'Form Complete',
+    };
+
+    if (conversionEvent.event === 'Form Complete'
+      // Check for undefined, since target can contain value 0 as well, which is falsy
+      && (data.target === undefined || data.source === undefined)
+    ) {
+      // If a buffer has already been set and tempConversionEvent exists,
+      // merge the two conversionEvent objects to send to alloy
+      if (bufferTimeoutId && tempConversionEvent) {
+        conversionEvent = { ...tempConversionEvent, ...conversionEvent };
+      } else {
+        // Temporarily hold the conversionEvent object until the timeout is complete
+        tempConversionEvent = { ...conversionEvent };
+
+        // If there is partial form conversion data,
+        // set the timeout buffer to wait for additional data
+        bufferTimeoutId = setTimeout(async () => {
+          analyticsTrackConversion({ ...conversionEvent });
+          tempConversionEvent = undefined;
+          conversionEvent = undefined;
+        }, CONVERSION_EVENT_TIMEOUT_MS);
+      }
+    }
+    return;
+  }
+
+  analyticsTrackConversion({ ...data });
+  tempConversionEvent = undefined;
+  conversionEvent = undefined;
+});
 
 loadPage();

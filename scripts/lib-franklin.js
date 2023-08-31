@@ -28,6 +28,8 @@ export function sampleRUM(checkpoint, data = {}) {
         .filter(({ fnname }) => dfnname === fnname)
         .forEach(({ fnname, args }) => sampleRUM[fnname](...args));
     });
+  sampleRUM.always = sampleRUM.always || [];
+  sampleRUM.always.on = (chkpnt, fn) => { sampleRUM.always[chkpnt] = fn; };
   sampleRUM.on = (chkpnt, fn) => { sampleRUM.cases[chkpnt] = fn; };
   defer('observe');
   defer('cwv');
@@ -68,6 +70,7 @@ export function sampleRUM(checkpoint, data = {}) {
       sendPing(data);
       if (sampleRUM.cases[checkpoint]) { sampleRUM.cases[checkpoint](); }
     }
+    if (sampleRUM.always[checkpoint]) { sampleRUM.always[checkpoint](data); }
   } catch (error) {
     // something went wrong
   }
@@ -145,6 +148,8 @@ export function decorateIcons(element = document) {
         span.innerHTML = iconHTML;
       }
     }
+    const a = span.closest('a');
+    if (a) a.title = 'icon';
   });
 }
 
@@ -167,6 +172,11 @@ export async function fetchPlaceholders(prefix = 'default') {
             });
             window.placeholders[prefix] = placeholders;
             resolve();
+          })
+          .catch((error) => {
+            // error loading placeholders
+            window.placeholders[prefix] = {};
+            reject(error);
           });
       } catch (error) {
         // error loading placeholders
@@ -177,6 +187,14 @@ export async function fetchPlaceholders(prefix = 'default') {
   }
   await window.placeholders[`${prefix}-loaded`];
   return window.placeholders[prefix];
+}
+
+export function getPlaceholderOrDefault(key, defaultText) {
+  if (!key) {
+    return defaultText || '';
+  }
+
+  return window.placeholders?.[`/${document.documentElement.lang}`]?.[key] || defaultText || '';
 }
 
 /**
@@ -340,6 +358,28 @@ export function buildBlock(blockName, content) {
 }
 
 /**
+ * Gets the configuration for the given glock, and also passes
+ * the config to the `patchBlockConfig` methods in the plugins.
+ *
+ * @param {Element} block The block element
+ * @returns {object} The block config (blockName, cssPath and jsPath)
+ */
+function getBlockConfig(block) {
+  const blockName = block.getAttribute('data-block-name');
+  const cssPath = `${window.hlx.codeBasePath}/blocks/${blockName}/${blockName}.css`;
+  const jsPath = `${window.hlx.codeBasePath}/blocks/${blockName}/${blockName}.js`;
+
+  if (!window.hlx.patchBlockConfig) {
+    return { blockName, cssPath, jsPath };
+  }
+
+  return window.hlx.patchBlockConfig.reduce(
+    (config, fn) => (typeof fn === 'function' ? fn(config) : config),
+    { blockName, cssPath, jsPath },
+  );
+}
+
+/**
  * Loads JS and CSS for a block.
  * @param {Element} block The block element
  */
@@ -347,15 +387,15 @@ export async function loadBlock(block) {
   const status = block.getAttribute('data-block-status');
   if (status !== 'loading' && status !== 'loaded') {
     block.setAttribute('data-block-status', 'loading');
-    const blockName = block.getAttribute('data-block-name');
+    const { blockName, cssPath, jsPath } = getBlockConfig(block);
     try {
       const cssLoaded = new Promise((resolve) => {
-        loadCSS(`${window.hlx.codeBasePath}/blocks/${blockName}/${blockName}.css`, resolve);
+        loadCSS(cssPath, resolve);
       });
       const decorationComplete = new Promise((resolve) => {
         (async () => {
           try {
-            const mod = await import(`../blocks/${blockName}/${blockName}.js`);
+            const mod = await import(jsPath);
             if (mod.default) {
               await mod.default(block);
             }
@@ -551,6 +591,7 @@ export function setup() {
   window.hlx = window.hlx || {};
   window.hlx.codeBasePath = '';
   window.hlx.lighthouse = new URLSearchParams(window.location.search).get('lighthouse') === 'on';
+  window.hlx.patchBlockConfig = [];
 
   const scriptEl = document.querySelector('script[src$="/scripts/scripts.js"]');
   if (scriptEl) {
