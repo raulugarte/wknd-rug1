@@ -4,7 +4,7 @@
  * @returns {Document} The document
  */
 async function fetchAdventures(url) {
-  const resp = await fetch(url);
+  const resp = await fetch(url, { mode: 'no-cors'});
   if (resp.ok) {
     return await resp.json();
   }
