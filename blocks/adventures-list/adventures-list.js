@@ -4,9 +4,7 @@
  * @returns {Document} The document
  */
 async function fetchAdventures(url) {
-  const resp = await fetch(url, {
-        credentials: "include"
-    });
+  const resp = await fetch(url);
   if (resp.ok) {
     return await resp.json();
   }
