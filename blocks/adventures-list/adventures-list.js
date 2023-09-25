@@ -17,10 +17,18 @@ async function fetchAdventures(url) {
 export default async function decorate($block) {
   // Get URL
   const link = $block.querySelector('a');
-  const path = link ? link.getAttribute('href') : $block.textContent.trim();
-
+  var path = link ? link.getAttribute('href') : $block.textContent.trim();
   // Get content host
-  const hostname = link.hostname;
+  var hostname = link.hostname;
+
+  if (document.referrer.endsWith('https://exc-unifiedcontent.experience.adobe.net/')) {
+    // Assume page is loaded within Universal Editor
+    const aem = document.querySelector("meta[name='urn:adobe:aem:editor:aemconnection']");
+    if (aem && aem.content && aem.content.startsWith('aem:')) {
+      path = aem.content.substring(4) + link.pathname;
+      hostname = aem.content.substring(4).replace('https://', '');
+    }
+  }
 
   // Fetch adventures
   const json = await fetchAdventures(path);
@@ -31,6 +39,10 @@ export default async function decorate($block) {
       // List item
       const $li = document.createElement('li');
       $li.className = 'cmp-image-list__item';
+      $li.setAttribute('itemscope', '');
+      $li.setAttribute('itemid', 'urn:aemconnection:' + adventure['_path'] + '/jcr:content/data/master');
+      $li.setAttribute('itemtype', 'reference');
+      $li.setAttribute('itemfilter', 'cf');
 
       // Article
       const $article = document.createElement('article');
@@ -47,6 +59,8 @@ export default async function decorate($block) {
       // Title
       const $title = document.createElement('span');
       $title.className = 'cmp-image-list__item-title';
+      $title.setAttribute('itemprop', 'title');
+      $title.setAttribute('itemtype', 'text');
       $title.textContent = adventure.title;
       $article.appendChild($title);
 
