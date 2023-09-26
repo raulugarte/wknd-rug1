@@ -21,12 +21,19 @@ export default async function decorate($block) {
   // Get content host
   var hostname = link.hostname;
 
+  // RUG
+  var hostnameRUG = link.hostname;
+  
   if (document.referrer.endsWith('https://exc-unifiedcontent.experience.adobe.net/')) {
     // Assume page is loaded within Universal Editor
     const aem = document.querySelector("meta[name='urn:adobe:aem:editor:aemconnection']");
     if (aem && aem.content && aem.content.startsWith('aem:')) {
       path = aem.content.substring(4) + link.pathname;
       hostname = aem.content.substring(4).replace('https://', '');
+
+      // RUG
+      hostnameRUG = aem.content.substring(4).replace('https://', '');
+      
     }
   }
 
