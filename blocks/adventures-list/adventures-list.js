@@ -23,7 +23,7 @@ export default async function decorate($block) {
 
   // RUG
   var hostnameRUG = link.hostname;
-  var pageRUG = url.substring(url.lastIndexOf('/') + 1);
+  var pageRUG = link.substring(link.lastIndexOf('/') + 1);
   
   if (document.referrer.endsWith('https://exc-unifiedcontent.experience.adobe.net/')) {
     // Assume page is loaded within Universal Editor
