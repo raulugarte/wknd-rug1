@@ -33,7 +33,7 @@ export default async function decorate($block) {
       hostname = aem.content.substring(4).replace('https://', '');
 
       // RUG
-      hostnameRUG = aem.content.substring(8).replace('https://', '');
+      // hostnameRUG = aem.content.substring(8).replace('https://', '');
       
     }
   }
@@ -59,7 +59,9 @@ export default async function decorate($block) {
       const $thumbnailDiv = document.createElement('div');
       $thumbnailDiv.className = 'cmp-image-list__item-image';
       const $thumbnail = document.createElement('img');
-      $thumbnail.src = 'https://' + hostname + adventure.primaryImage['_dynamicUrl'];
+      // $thumbnail.src = 'https://' + hostname + adventure.primaryImage['_dynamicUrl'];
+      $thumbnail.src = 'https://' + hostnameRUG + adventure.primaryImage['_dynamicUrl'];
+      
       $thumbnail.alt = adventure.title;
       $thumbnail.className = 'cmp-image';
       $thumbnailDiv.appendChild($thumbnail);
