@@ -22,8 +22,8 @@ export default async function decorate($block) {
   var hostname = link.hostname;
 
   // RUG
-  var hostnameRUG = link;
-
+  //var hostnameRUG = link;
+  var hostnameRUG = link.href.split("target=https://")[1].split("/")[0]
   
   if (document.referrer.endsWith('https://exc-unifiedcontent.experience.adobe.net/')) {
     // Assume page is loaded within Universal Editor
