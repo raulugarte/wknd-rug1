@@ -22,7 +22,7 @@ export default async function decorate($block) {
   var hostname = link.hostname;
 
   // RUG
-  var hostnameRUG = link.hostname;
+  var hostnameRUG = link;
 
   
   if (document.referrer.endsWith('https://exc-unifiedcontent.experience.adobe.net/')) {
