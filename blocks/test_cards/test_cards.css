@@ -1,6 +1,6 @@
-.teaser > div {
+.test_cards > div {
     display: grid;
-    grid-template-areas: "teaser";
+    grid-template-areas: "test_cards";
     align-items: end;
     justify-items: center;
 }
