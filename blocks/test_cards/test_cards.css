@@ -1,1 +1,50 @@
+imageTextTeaser__container {
+    display: flex;
+    flex: 1 100%;
+    flex-flow: column nowrap;
+    margin-bottom: 3.2rem;
+    background: #fff
+}
 
+imageTextTeaser__container>a {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    min-height: 1px;
+}
+
+imageTextTeaser__container>a:focus .btn.btn-primary {
+    color: #d40511;
+    background-color: #fff;
+    border: 2px solid #d40511
+}
+
+imageTextTeaser__container>a[href]:hover .link-primary,.dhl.redesign .imageTextTeaser__container>a[href]:focus .link-primary {
+    color: #d40511
+}
+
+imageTextTeaser__container>a[href]:hover .btn-default,.dhl.redesign .imageTextTeaser__container>a[href]:focus .btn-default {
+    border-color: #d40511
+}
+
+imageTextTeaser__container>a[href]:hover .btn-primary,.dhl.redesign .imageTextTeaser__container>a[href]:focus .btn-primary {
+    color: #d40511;
+    background: #fff
+}
+
+imageTextTeaser__container>a[href]:hover.imageTextTeaserNoImage .h1,.dhl.redesign .imageTextTeaser__container>a[href]:focus.imageTextTeaserNoImage .h1,.dhl.redesign .imageTextTeaser__container>a[href]:hover.imageTextTeaserNoImage .h2,.dhl.redesign .imageTextTeaser__container>a[href]:focus.imageTextTeaserNoImage .h2,.dhl.redesign .imageTextTeaser__container>a[href]:hover.imageTextTeaserNoImage .h3,.dhl.redesign .imageTextTeaser__container>a[href]:focus.imageTextTeaserNoImage .h3,.dhl.redesign .imageTextTeaser__container>a[href]:hover.imageTextTeaserNoImage .h4,.dhl.redesign .imageTextTeaser__container>a[href]:focus.imageTextTeaserNoImage .h4,.dhl.redesign .imageTextTeaser__container>a[href]:hover.imageTextTeaserNoImage .h5,.dhl.redesign .imageTextTeaser__container>a[href]:focus.imageTextTeaserNoImage .h5,.dhl.redesign .imageTextTeaser__container>a[href]:hover.imageTextTeaserNoImage .h6,.dhl.redesign .imageTextTeaser__container>a[href]:focus.imageTextTeaserNoImage .h6 {
+    color: #000
+}
+
+imageTextTeaser__container>a[href].user-is-tabbing:focus {
+    border: 1px dotted #d40511;
+    margin-top: -2px
+}
+
+imageTextTeaser__container.imageTextTeaser__container__gray {
+    background: #f5f5f5
+}
+
+imageTextTeaser__container.imageTextTeaser__container__gradient {
+    background: linear-gradient(to bottom,#fc0 0,#fc0 30%,#ffe57f 79%,#fff0b2 100%)
+}
