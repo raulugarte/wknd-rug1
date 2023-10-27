@@ -1,6 +1,6 @@
 /**
  * @param {HTMLElement} $block
  */
-export default function decorate() {
+export default function decorate(block) {
 
 }
