@@ -6,9 +6,22 @@
 }
 
 .tabs li {
-    box-sizing: border-box;
+    /* box-sizing: border-box;
     border-bottom: 1px solid transparent;
     cursor: pointer;
+    */
+
+    border-bottom: 1px solid transparent;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    cursor: pointer;
+    font-size: var(--fontSizeSmall,14px);
+    max-height: var(--buttonSize,3pc);
+    min-width: var(--buttonSize,3pc);
+    padding: .5rem 1rem;
+    text-transform: uppercase;
+    
+    
 }
 
 .tabs li button {
