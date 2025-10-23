@@ -59,7 +59,7 @@ async function getCategories(persistedQuery, isUE) {
 
     return items.map((item) => {
         /*const imageUrl = getImageUrl(item.image, isUE);*/
-        const imageUrl = getImageUrl(item.primaryImage, isUE);
+        const imageUrl = getImageUrl(item.primaryImage._dynamicUrl, isUE);
         return {
             _path: item._path,
             title: item.title,
