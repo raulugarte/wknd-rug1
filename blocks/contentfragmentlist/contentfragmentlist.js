@@ -65,10 +65,10 @@ async function getCategories(persistedQuery, isUE) {
             title: item.title,
             /*description: item.description["plaintext"],*/
             description: item.slug["plaintext"],
-            cta: { 
+            /* cta: { 
                 text: item.ctaText,
                 link: item.ctaLink,
-            },
+            },*/
             image: {
                 url: imageUrl,
                 /*deliveryUrl: getImageUrl(item.image, false),*/
